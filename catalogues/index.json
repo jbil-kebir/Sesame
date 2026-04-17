@@ -1,0 +1,20 @@
+[
+  {
+    "id": "kleber_college",
+    "nom": "Collège Kléber — Strasbourg",
+    "description": "Ressources numériques du collège Kléber : ENT, Pronote, Moodle, sécurité routière, technologie.",
+    "version": 1,
+    "updated": "2026-04-17",
+    "nb_raccourcis": 11,
+    "url": "https://raw.githubusercontent.com/jbil-kebir/Sesame/main/catalogues/kleber_college.catalogue"
+  },
+  {
+    "id": "kleber_lycee",
+    "nom": "Lycée Kléber — Strasbourg",
+    "description": "Ressources numériques du lycée Kléber : ENT, Pronote, Moodle, ressources maths.",
+    "version": 1,
+    "updated": "2026-04-17",
+    "nb_raccourcis": 5,
+    "url": "https://raw.githubusercontent.com/jbil-kebir/Sesame/main/catalogues/kleber_lycee.catalogue"
+  }
+]
