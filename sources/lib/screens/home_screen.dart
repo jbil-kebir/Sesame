@@ -13,6 +13,7 @@ import '../models/raccourci.dart';
 import '../services/export_service.dart';
 import '../services/storage_service.dart';
 import 'catalogue_screen.dart';
+import 'catalogues_en_ligne_screen.dart';
 import 'webview_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -732,6 +733,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _ouvrirCataloguesEnLigne() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CataloguesEnLigneScreen()),
+    );
+    if (!mounted) return;
+    await _charger();
+  }
+
   Future<void> _afficherAPropos() async {
     final info = await PackageInfo.fromPlatform();
     final version = info.version.replaceAll(RegExp(r'\.0$'), '');
@@ -761,6 +771,64 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ─── Séparateurs ─────────────────────────────────────────────────────────
+
+  Widget _separateurLigne() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          const Expanded(child: Divider()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Icon(Icons.drag_handle, size: 16, color: Colors.grey[400]),
+          ),
+          const Expanded(child: Divider()),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildSlivers() {
+    final slivers = <Widget>[];
+    var segmentStart = 0;
+    bool premierSegment = true;
+
+    void ajouterSegment(int fin) {
+      final segment = _raccourcis.sublist(segmentStart, fin)
+          .where((r) => !r.estSeparateur)
+          .toList();
+      if (segment.isEmpty) return;
+      slivers.add(SliverPadding(
+        padding: EdgeInsets.fromLTRB(12, premierSegment ? 12 : 0, 12, 0),
+        sliver: SliverGrid(
+          delegate: SliverChildBuilderDelegate(
+            (_, j) => _carteGrille(segment[j]),
+            childCount: segment.length,
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.05,
+          ),
+        ),
+      ));
+      premierSegment = false;
+    }
+
+    for (var i = 0; i < _raccourcis.length; i++) {
+      if (_raccourcis[i].estSeparateur) {
+        ajouterSegment(i);
+        slivers.add(SliverToBoxAdapter(child: _separateurLigne()));
+        segmentStart = i + 1;
+      }
+    }
+    ajouterSegment(_raccourcis.length);
+    slivers.add(const SliverPadding(padding: EdgeInsets.only(bottom: 12)));
+    return slivers;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -771,6 +839,15 @@ class _HomeScreenState extends State<HomeScreen> {
               foregroundColor: Colors.white,
               automaticallyImplyLeading: false,
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: 'Ajouter un séparateur',
+                  onPressed: () {
+                    final id = DateTime.now().millisecondsSinceEpoch.toString();
+                    setState(() => _raccourcis.add(Raccourci.separateur(id)));
+                    _sauvegarder();
+                  },
+                ),
                 TextButton(
                   onPressed: () => setState(() => _modeReorganisation = false),
                   child: const Text(
@@ -800,6 +877,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() => _modeReorganisation = true);
                     if (value == 'catalogue') _ouvrirCatalogue();
                     if (value == 'catalogue_sesame') _importerCatalogue();
+                    if (value == 'catalogue_en_ligne') _ouvrirCataloguesEnLigne();
                     if (value == 'export') _exporter();
                     if (value == 'import') _importer();
                     if (value == 'effacer') _effacerTousLesRaccourcis();
@@ -811,10 +889,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     const PopupMenuDivider(),
                     const PopupMenuItem(
                         value: 'catalogue',
-                        child: Text('Ajouter depuis le catalogue')),
+                        child: Text('Catalogue par défaut')),
                     const PopupMenuItem(
                         value: 'catalogue_sesame',
                         child: Text('Importer un catalogue (.sesame)')),
+                    const PopupMenuItem(
+                        value: 'catalogue_en_ligne',
+                        child: Text('Catalogues en ligne')),
                     const PopupMenuDivider(),
                     const PopupMenuItem(value: 'export', child: Text('Exporter')),
                     const PopupMenuItem(value: 'import', child: Text('Importer')),
@@ -849,6 +930,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   itemCount: _raccourcis.length,
                   itemBuilder: (_, i) {
                     final r = _raccourcis[i];
+                    if (r.estSeparateur) {
+                      return ListTile(
+                        key: ValueKey(r.id),
+                        leading: IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red),
+                          onPressed: () {
+                            setState(() => _raccourcis.remove(r));
+                            _sauvegarder();
+                          },
+                        ),
+                        title: const Divider(),
+                        trailing:
+                            const Icon(Icons.drag_handle, color: Colors.grey),
+                      );
+                    }
                     return ListTile(
                       key: ValueKey(r.id),
                       leading: _iconeSite(r, size: 36),
@@ -864,21 +961,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 )
               : _vueGrille
-                  ? GridView.builder(
-                      padding: const EdgeInsets.all(12),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 1.05,
-                      ),
-                      itemCount: _raccourcis.length,
-                      itemBuilder: (_, i) => _carteGrille(_raccourcis[i]),
-                    )
+                  ? CustomScrollView(slivers: _buildSlivers())
                   : ListView.builder(
                       itemCount: _raccourcis.length,
-                      itemBuilder: (_, i) => _carteListe(_raccourcis[i]),
+                      itemBuilder: (_, i) {
+                        final r = _raccourcis[i];
+                        if (r.estSeparateur) return _separateurLigne();
+                        return _carteListe(r);
+                      },
                     ),
       floatingActionButton: _modeReorganisation
           ? null

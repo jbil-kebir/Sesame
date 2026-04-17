@@ -28,25 +28,25 @@
   <ellipse cx="420" cy="190" rx="340" ry="155" fill="white" opacity="0.07"/>
 
   <!-- Clé (ombre portée) -->
-  <g transform="translate(10,14)" opacity="0.28">
-    <circle cx="512" cy="312" r="190" fill="#0D47A1"/>
-    <rect x="476" y="312" width="72" height="490" rx="36" fill="#0D47A1"/>
-    <rect x="548" y="602" width="78" height="60" rx="12" fill="#0D47A1"/>
-    <rect x="548" y="704" width="58" height="60" rx="12" fill="#0D47A1"/>
+  <g transform="translate(10,64)" opacity="0.28">
+    <circle cx="512" cy="362" r="190" fill="#0D47A1"/>
+    <rect x="476" y="362" width="72" height="490" rx="36" fill="#0D47A1"/>
+    <rect x="548" y="652" width="78" height="60" rx="12" fill="#0D47A1"/>
+    <rect x="548" y="754" width="58" height="60" rx="12" fill="#0D47A1"/>
   </g>
 
   <!-- Clé — anneau + tige + dents -->
   <g filter="url(#shadow)">
-    <circle cx="512" cy="312" r="190" fill="url(#key_grad)" filter="url(#glow)"/>
-    <rect x="476" y="312" width="72" height="490" rx="36" fill="url(#key_grad)"/>
-    <rect x="548" y="602" width="78" height="60" rx="12" fill="url(#key_grad)"/>
-    <rect x="548" y="704" width="58" height="60" rx="12" fill="url(#key_grad)"/>
+    <circle cx="512" cy="362" r="190" fill="url(#key_grad)" filter="url(#glow)"/>
+    <rect x="476" y="362" width="72" height="490" rx="36" fill="url(#key_grad)"/>
+    <rect x="548" y="652" width="78" height="60" rx="12" fill="url(#key_grad)"/>
+    <rect x="548" y="754" width="58" height="60" rx="12" fill="url(#key_grad)"/>
   </g>
 
   <!-- Trou de serrure dans l'anneau -->
-  <circle cx="512" cy="270" r="64" fill="#1565C0"/>
-  <polygon points="474,328 550,328 512,448" fill="#1565C0"/>
+  <circle cx="512" cy="320" r="64" fill="#1565C0"/>
+  <polygon points="474,378 550,378 512,498" fill="#1565C0"/>
 
   <!-- Filet de brillance sur l'anneau -->
-  <circle cx="512" cy="312" r="190" fill="none" stroke="white" stroke-width="5" opacity="0.25"/>
+  <circle cx="512" cy="362" r="190" fill="none" stroke="white" stroke-width="5" opacity="0.25"/>
 </svg>

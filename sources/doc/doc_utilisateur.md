@@ -1,14 +1,45 @@
-# Guide utilisateur — Lanceur
+# Guide utilisateur — Sésame
 
-## À quoi sert Lanceur ?
+## À quoi sert Sésame ?
 
-Lanceur est votre page d'accueil personnelle sur Android. Il vous permet d'enregistrer les sites web que vous consultez le plus souvent et de les ouvrir en un seul appui, directement dans l'application.
+Sésame est votre page d'accueil personnelle sur Android. Il vous permet d'enregistrer les sites web que vous consultez le plus souvent et de les ouvrir en un seul appui, directement dans l'application, avec connexion automatique.
+
+---
+
+## Accès sécurisé
+
+### Code d'accès
+
+Au premier lancement, Sésame vous demande de créer un **code d'accès à 6 chiffres**. Ce code est obligatoire : il protège l'accès à vos raccourcis et identifiants enregistrés.
+
+À chaque démarrage de l'application, ce code vous est demandé avant d'accéder à l'écran principal.
+
+### Déverrouillage par biométrie
+
+Si votre appareil dispose d'un capteur d'empreinte digitale, Sésame propose automatiquement de déverrouiller l'application par empreinte. Le code d'accès reste toujours disponible en alternative.
+
+### Codes de secours
+
+Lors de la création de votre code d'accès, Sésame génère **8 codes de secours** à usage unique. **Sauvegardez-les impérativement** : sur papier, dans un gestionnaire de mots de passe, ou par tout autre moyen sûr.
+
+Chaque code de secours permet de réinitialiser votre code d'accès une seule fois.
+
+### Code oublié
+
+Si vous avez oublié votre code d'accès :
+
+1. Après 5 tentatives échouées, le lien **"Code oublié ?"** apparaît sous le clavier.
+2. Appuyez dessus pour ouvrir la feuille de récupération.
+3. **Option A — code de secours** : saisissez l'un de vos codes de secours. Sésame vous permet alors de définir un nouveau code d'accès et génère de nouveaux codes de secours.
+4. **Option B — réinitialisation** : si vous n'avez plus de codes de secours, vous pouvez effacer complètement l'application. **Toutes les données sont perdues définitivement.** Un fichier de sauvegarde `.lncr` vous permettra de les restaurer si vous en avez un.
+
+> **Nota** : Sésame ne connaît pas votre code. Personne ne peut le récupérer à votre place.
 
 ---
 
 ## Écran principal
 
-Au lancement, vous voyez vos raccourcis affichés sous forme de **grille** ou de **liste**.
+Au déverrouillage, vous voyez vos raccourcis affichés sous forme de **grille** ou de **liste**.
 
 - Chaque raccourci affiche le **logo du site** (favicon) et son **nom**.
 - L'icône en haut à droite permet de **basculer entre la vue grille et la vue liste**.
@@ -82,6 +113,33 @@ Vous pouvez aussi appuyer sur l'**icône clé** qui apparaît dans la barre du h
 3. **Maintenez appuyé** sur un raccourci et **glissez-le** à la position souhaitée.
 4. Appuyez sur **Terminer** pour valider et revenir à l'écran normal.
 
+### Séparateurs
+
+En mode réorganisation, appuyez sur le **+** dans la barre du haut pour insérer un séparateur. Il apparaît en bas de la liste — glissez-le à l'endroit voulu pour diviser vos raccourcis en groupes visuels. Pour le supprimer, appuyez sur l'icône **corbeille** à sa gauche.
+
+---
+
+## Catalogues en ligne
+
+Les catalogues en ligne sont des listes de raccourcis prêts à l'emploi, publiés et mis à jour par l'administrateur de l'application.
+
+### Importer un catalogue
+
+1. Appuyez sur le menu **⋮**, puis **Catalogues en ligne**.
+2. L'application télécharge la liste des catalogues disponibles.
+3. Chaque carte affiche le nom, la description et le nombre de raccourcis.
+4. Appuyez sur un catalogue pour l'ouvrir.
+5. Sélectionnez les raccourcis à ajouter (les raccourcis déjà présents sont grisés).
+6. Appuyez sur **Ajouter** pour les intégrer à votre liste.
+
+### Mise à jour d'un catalogue
+
+Lorsqu'une nouvelle version d'un catalogue est disponible, la carte affiche le badge **"Mise à jour"**. Appuyez dessus et importez les nouveaux raccourcis exactement comme lors du premier import.
+
+### Mode hors-ligne
+
+Si vous n'avez pas de connexion Internet, la liste des catalogues s'affiche à partir du dernier téléchargement connu. Le contenu des catalogues eux-mêmes n'est pas mis en cache : une connexion est nécessaire pour les ouvrir.
+
 ---
 
 ## Exporter et importer ses raccourcis
@@ -94,6 +152,8 @@ Vous pouvez aussi appuyer sur l'**icône clé** qui apparaît dans la barre du h
 
 > Le fichier est chiffré : sans la passphrase, son contenu est illisible.
 
+> **Conseil** : conservez un fichier `.lncr` à jour comme sauvegarde de secours. C'est le seul moyen de restaurer vos données en cas de réinitialisation de l'application.
+
 ### Importer
 
 1. Appuyez sur le menu **⋮**, puis **Importer**.
@@ -102,6 +162,8 @@ Vous pouvez aussi appuyer sur l'**icône clé** qui apparaît dans la barre du h
 4. Choisissez comment importer :
    - **Remplacer** — efface tous les raccourcis existants et les remplace par ceux du fichier.
    - **Ajouter** — fusionne avec les raccourcis existants. Si un nom est identique, un numéro est ajouté automatiquement (ex. : "Ma banque (2)").
+
+---
 
 ## Questions fréquentes
 
@@ -113,3 +175,6 @@ La suppression est définitive. Vous devrez recréer le raccourci via le bouton 
 
 **Le site ne se charge pas.**
 Vérifiez votre connexion internet. Vous pouvez aussi appuyer sur l'icône **refresh** pour réessayer.
+
+**J'ai oublié ma passphrase d'export.**
+La passphrase est connue de vous seul. Sans elle, le fichier `.lncr` est inaccessible.
