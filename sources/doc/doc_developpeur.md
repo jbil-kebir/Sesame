@@ -1,8 +1,8 @@
-# Documentation développeur — Lanceur
+# Documentation développeur — Sésame
 
 ## Vue d'ensemble
 
-**Lanceur** est une application Android développée avec Flutter. Elle permet de créer des raccourcis vers des pages web favorites et de les ouvrir dans une WebView intégrée, avec gestion automatique des identifiants de connexion.
+**Sésame** est une application Android développée avec Flutter. Elle permet de créer des raccourcis vers des pages web favorites et de les ouvrir dans une WebView intégrée, avec gestion automatique des identifiants de connexion.
 
 ---
 
@@ -280,13 +280,39 @@ Les fichiers générés se trouvent dans `android/app/src/main/res/mipmap-*/`.
 
 ---
 
+## Script de build — `build_release.bat`
+
+Le script `build_release.bat` à la racine du projet automatise l'ensemble du cycle de release :
+
+1. Copie `doc/catalogue.json` → `assets/catalogue.json` (catalogue embarqué)
+2. Build APK release via Flutter
+3. Copie l'APK dans `U:\Info-Developpement\GitHub\Sesame\apk\sesame.apk`
+4. Synchronise `lib/`, `assets/`, `doc/` (y compris les `.sesame`) vers `sources/` du dépôt GitHub local via `sync_github.py`
+5. `git add -A` + `git commit` + `git push`
+
+**Lancement** depuis PowerShell ou tout terminal VS Code :
+```
+./build_release
+```
+
+**Note importante — `call flutter`**  
+`flutter` est lui-même un fichier `.bat`. Dans un script `.bat`, appeler un autre `.bat` sans le mot-clé `call` transfère l'exécution définitivement : le script appelant ne reprend jamais la main. Le script utilise donc `call flutter build apk --release` pour que les étapes 3 à 5 s'exécutent bien après le build.
+
+**Catalogue embarqué**  
+Éditer `doc/catalogue.json` pour modifier le catalogue par défaut. Le build le copie automatiquement dans `assets/` avant de compiler.
+
+**Fichiers `.sesame`**  
+Les fichiers catalogue à distribuer (ex. `kleber_college.sesame`) se placent dans `doc/` et sont versionnés sur GitHub à chaque build.
+
+---
+
 ## Commandes utiles
 
 ```bash
 # Lancer en mode debug sur Android
 flutter run
 
-# Build APK release
+# Build APK release (préférer build_release.bat)
 flutter build apk --release
 
 # Mettre à jour les dépendances

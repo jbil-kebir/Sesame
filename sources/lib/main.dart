@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/catalogue_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/lock_screen.dart';
+import 'screens/pin_setup_screen.dart';
+import 'services/pin_service.dart';
 
 void main() {
   runApp(const SesameApp());
@@ -22,13 +24,17 @@ class SesameApp extends StatelessWidget {
       ),
       home: const AppRouter(),
       routes: {
-        '/home': (_) => const HomeScreen(),
+        // Après l'onboarding → configuration du PIN obligatoire
+        '/home': (_) => const PinSetupScreen(),
       },
     );
   }
 }
 
-/// Redirige vers l'onboarding au premier lancement, HomeScreen ensuite.
+/// Redirige selon l'état de l'application :
+/// - Premier lancement → CatalogueScreen (onboarding)
+/// - PIN non configuré  → PinSetupScreen
+/// - PIN configuré      → LockScreen
 class AppRouter extends StatefulWidget {
   const AppRouter({super.key});
 
@@ -48,12 +54,7 @@ class _AppRouterState extends State<AppRouter> {
     final onboardingDone = prefs.getBool('onboarding_done') ?? false;
     if (!mounted) return;
 
-    if (onboardingDone) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else {
+    if (!onboardingDone) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -63,13 +64,29 @@ class _AppRouterState extends State<AppRouter> {
           ),
         ),
       );
+      return;
     }
+
+    final pinConfigure = await PinService().estConfigure();
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => pinConfigure
+            ? const LockScreen()
+            : const PinSetupScreen(),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      backgroundColor: Color(0xFF1565C0),
+      body: Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
     );
   }
 }

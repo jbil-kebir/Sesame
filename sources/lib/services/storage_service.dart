@@ -43,4 +43,11 @@ class StorageService {
     await prefs.remove(_key);
     await _secureStorage.deleteAll();
   }
+
+  // Efface l'intégralité des données et préférences (réinitialisation complète).
+  Future<void> reinitialiserApp() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    await _secureStorage.deleteAll();
+  }
 }
