@@ -667,10 +667,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _importerCatalogue() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['catalogue'],
-    );
+    final result = await FilePicker.platform.pickFiles(type: FileType.any);
     if (result == null || !mounted) return;
 
     final path = result.files.single.path;
@@ -896,7 +893,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text('Catalogue par défaut')),
                     const PopupMenuItem(
                         value: 'catalogue_sesame',
-                        child: Text('Importer un catalogue (.catalogue)')),
+                        child: Text('Importer un catalogue (.sesame)')),
                     const PopupMenuItem(
                         value: 'catalogue_en_ligne',
                         child: Text('Catalogues en ligne')),
