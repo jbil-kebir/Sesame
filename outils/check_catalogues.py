@@ -10,12 +10,21 @@ catalogues en évitant le rate-limit de l'API GitHub anonyme.
 Critères "lien cassé" :
   - Timeout / erreur réseau / DNS introuvable
   - HTTP 404, 410, 5xx
+  - Redirection d'un sous-domaine spécifique vers le domaine racine du même site
+    (ex : clg-xxx.monbureaunumerique.fr → www.monbureaunumerique.fr)
 Exclus (lien considéré OK) :
   - 401, 403 (ressource protégée mais existante)
   - 3xx (redirections suivies automatiquement)
   - 200, 206, etc.
 
-Rapport : affiché dans la console ET sauvegardé dans doc/rapports/
+Limitations connues :
+  - Soft 404 : certains serveurs retournent HTTP 200 avec une page d'erreur générique
+    (ex : portail ENT qui affiche une page "cliquer pour continuer" au lieu de rediriger).
+    Ces cas ne peuvent pas être détectés sans analyser le contenu de la réponse, ce qui
+    nécessiterait des heuristiques spécifiques à chaque site. L'outil n'effectue pas cette
+    analyse — un lien vers un sous-domaine inexistant peut donc apparaître comme OK.
+
+Rapport : affiché dans la console ET sauvegardé dans rapports/
 """
 
 import argparse
@@ -24,6 +33,7 @@ import json
 import os
 import sys
 import urllib.request
+import urllib.parse
 import base64
 from datetime import datetime
 from pathlib import Path
@@ -103,20 +113,60 @@ def fetch_catalogues(token: str | None) -> list[dict]:
 
 # ── Vérification des URLs ──────────────────────────────────────────────────────
 
+def _domaine_change(url_orig: str, url_finale: str) -> bool:
+    """Détecte le cas où un sous-domaine spécifique est redirigé vers le domaine
+    racine du même site (signe que le sous-domaine n'existe pas).
+    Ex : clg-kleber-sttrasbourg.monbureaunumerique.fr -> www.monbureaunumerique.fr = cassé.
+    Les redirections cross-domaine légitimes (ex: Pronote -> CAS) ne sont pas flaggées."""
+    h1 = urllib.parse.urlparse(url_orig).hostname or ""
+    h2 = urllib.parse.urlparse(url_finale).hostname or ""
+    if h1 == h2:
+        return False
+
+    def base_domain(h):
+        parts = h.split(".")
+        return ".".join(parts[-2:]) if len(parts) >= 2 else h
+
+    def sans_www(h):
+        return h[4:] if h.startswith("www.") else h
+
+    base1 = base_domain(h1)
+    base2 = base_domain(h2)
+
+    # Même domaine de base, mais h1 est un sous-domaine spécifique
+    # et h2 est le domaine racine (www.base ou base) → portail générique
+    if base1 == base2:
+        h2_norm = sans_www(h2)
+        parts1 = h1.split(".")
+        parts2 = h2.split(".")
+        if h2_norm == base2 and len(parts1) > len(parts2):
+            return True
+
+    return False
+
+
 async def check_url_aiohttp(session: "aiohttp.ClientSession", shortcut: dict) -> dict:
     url = shortcut["url"]
     timeout = aiohttp.ClientTimeout(total=TIMEOUT)
     try:
         async with session.head(url, allow_redirects=True, timeout=timeout) as resp:
             code = resp.status
+            url_finale = str(resp.url)
             if code not in CODES_CASSES:
+                if _domaine_change(url, url_finale):
+                    return {**shortcut, "statut": "CASSE", "code": code,
+                            "detail": f"Redirige vers {url_finale}"}
                 return {**shortcut, "statut": "OK", "code": code, "detail": ""}
         # HEAD a retourné un code cassé : on confirme avec GET (certains serveurs
         # ne supportent pas HEAD et retournent 404 à tort)
         async with session.get(url, allow_redirects=True, timeout=timeout) as resp:
             code = resp.status
+            url_finale = str(resp.url)
             if code in CODES_CASSES:
                 return {**shortcut, "statut": "CASSE", "code": code, "detail": f"HTTP {code}"}
+            if _domaine_change(url, url_finale):
+                return {**shortcut, "statut": "CASSE", "code": code,
+                        "detail": f"Redirige vers {url_finale}"}
             return {**shortcut, "statut": "OK", "code": code, "detail": ""}
     except asyncio.TimeoutError:
         return {**shortcut, "statut": "CASSE", "code": None, "detail": "Delai depasse"}
@@ -140,8 +190,8 @@ async def check_all_aiohttp(shortcuts: list[dict]) -> list[dict]:
         return await asyncio.gather(*[bounded(s) for s in shortcuts])
 
 
-def _urllib_request(url: str, method: str) -> int:
-    """Envoie une requête HTTP et retourne le code de statut final (après redirections)."""
+def _urllib_request(url: str, method: str) -> tuple[int, str]:
+    """Retourne (code, url_finale) après redirections."""
     import ssl
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -151,7 +201,7 @@ def _urllib_request(url: str, method: str) -> int:
                       "(KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36"
     })
     with urllib.request.urlopen(req, timeout=TIMEOUT, context=ctx) as r:
-        return r.status
+        return r.status, r.geturl()
 
 
 def check_url_urllib(shortcut: dict) -> dict:
@@ -159,22 +209,31 @@ def check_url_urllib(shortcut: dict) -> dict:
     import socket
     url = shortcut["url"]
     try:
-        code = _urllib_request(url, "HEAD")
+        code, url_finale = _urllib_request(url, "HEAD")
         if code not in CODES_CASSES:
+            if _domaine_change(url, url_finale):
+                return {**shortcut, "statut": "CASSE", "code": code,
+                        "detail": f"Redirige vers {url_finale}"}
             return {**shortcut, "statut": "OK", "code": code, "detail": ""}
         # HEAD cassé : on confirme avec GET
-        code = _urllib_request(url, "GET")
+        code, url_finale = _urllib_request(url, "GET")
         if code in CODES_CASSES:
             return {**shortcut, "statut": "CASSE", "code": code, "detail": f"HTTP {code}"}
+        if _domaine_change(url, url_finale):
+            return {**shortcut, "statut": "CASSE", "code": code,
+                    "detail": f"Redirige vers {url_finale}"}
         return {**shortcut, "statut": "OK", "code": code, "detail": ""}
     except urllib.error.HTTPError as e:
         if e.code not in CODES_CASSES:
             return {**shortcut, "statut": "OK", "code": e.code, "detail": ""}
         # HEAD cassé : on confirme avec GET
         try:
-            code = _urllib_request(url, "GET")
+            code, url_finale = _urllib_request(url, "GET")
             if code in CODES_CASSES:
                 return {**shortcut, "statut": "CASSE", "code": code, "detail": f"HTTP {code}"}
+            if _domaine_change(url, url_finale):
+                return {**shortcut, "statut": "CASSE", "code": code,
+                        "detail": f"Redirige vers {url_finale}"}
             return {**shortcut, "statut": "OK", "code": code, "detail": ""}
         except urllib.error.HTTPError as e2:
             if e2.code in CODES_CASSES:
@@ -215,7 +274,7 @@ def generer_rapport(catalogues: list[dict], resultats: dict[str, list[dict]]) ->
         total_ok += ok
         total_casse += len(casses)
 
-        lines.append(f"[{cat['nom']}]  ({ok}/{len(res)} OK)")
+        lines.append(f"[{cat['nom']}] ({cat['id']}.catalogue)  ({ok}/{len(res)} OK)")
         if casses:
             for r in casses:
                 code_str = f"HTTP {r['code']}" if r["code"] else r["detail"]
