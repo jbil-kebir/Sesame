@@ -12,8 +12,9 @@ from pathlib import Path
 from datetime import datetime
 
 SCRIPT_DIR = Path(__file__).parent
-EXPEDITEUR = "jbil.kebir@pm.me"
-DESTINATAIRE = "jbil.kebir@protonmail.com"
+EXPEDITEUR = "jbil.kebir@protonmail.com"
+DESTINATAIRE = "jbil.kebir@pm.me"
+THUNDERBIRD = r"C:\Program Files\Mozilla Thunderbird\thunderbird.exe"
 TOKEN_FILE = Path(r"D:\Developpement\Token pour Claude.txt")
 
 
@@ -23,8 +24,31 @@ def lire_token() -> str:
     return ""
 
 
+def assurer_thunderbird_ouvert():
+    """Démarre Thunderbird s'il n'est pas déjà en cours d'exécution."""
+    import time
+    result = subprocess.run(
+        ["tasklist", "/FI", "IMAGENAME eq thunderbird.exe", "/NH"],
+        capture_output=True, text=True
+    )
+    if "thunderbird.exe" not in result.stdout.lower():
+        print("Thunderbird fermé, démarrage en cours...")
+        subprocess.Popen([THUNDERBIRD])
+        time.sleep(8)  # attendre que l'extension MCP soit prête
+
+
+def extraire_resume(rapport_text: str) -> str:
+    """Extrait la ligne de résultat global pour le sujet du mail."""
+    for line in rapport_text.splitlines():
+        if line.startswith("Resultat global"):
+            return line
+    return ""
+
+
 def main():
     token = lire_token()
+
+    assurer_thunderbird_ouvert()
 
     # Lancement de la vérification
     args = [sys.executable, str(SCRIPT_DIR / "check_catalogues.py")]
@@ -41,7 +65,8 @@ def main():
     rapport_text = latest.read_text(encoding="utf-8")
 
     date_str = datetime.now().strftime("%d/%m/%Y")
-    subject = f"Rapport Sesame -- {date_str}"
+    resume = extraire_resume(rapport_text)
+    subject = f"Sesame {date_str} -- {resume}"
 
     # Envoi via Claude Code (MCP thunderbird-mail sendMail skipReview)
     prompt = (
