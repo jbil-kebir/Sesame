@@ -1,4 +1,4 @@
-# Lanceur
+# Sésame
 
 Application Android Flutter permettant d'enregistrer des raccourcis vers vos sites web favoris et de les ouvrir en un seul appui, avec connexion automatique optionnelle.
 
@@ -14,6 +14,7 @@ Application Android Flutter permettant d'enregistrer des raccourcis vers vos sit
 - **Vue grille / liste** — basculez l'affichage d'un appui
 - **Réorganisation par glisser-déposer** — triez vos raccourcis à la main
 - **Export / Import chiffré** — sauvegardez vos raccourcis dans un fichier `.lncr` chiffré (AES-256, PBKDF2) et restaurez-les sur un autre appareil
+- **Catalogues en ligne** — importez des raccourcis prêts à l'emploi depuis un catalogue hébergé sur GitHub
 
 ---
 
@@ -47,16 +48,31 @@ flutter build apk --release
 
 ### APK prête à l'emploi
 
-Un fichier `apk/lanceur.apk` est disponible à la racine du dépôt pour une installation directe sur Android.
+Un fichier `apk/sesame.apk` est disponible à la racine du dépôt pour une installation directe sur Android.
 
 ---
 
 ## Structure du dépôt
 
 ```
-Lanceur/
+Sesame/
 ├── apk/
-│   └── lanceur.apk                # APK release prête à l'emploi
+│   └── sesame.apk                 # APK release prête à l'emploi
+├── catalogues/                    # Catalogues de raccourcis hébergés
+│   ├── index.json                 # Index des catalogues disponibles
+│   ├── kleber_college.catalogue   # Catalogue Collège Kléber
+│   └── kleber_lycee.catalogue     # Catalogue Lycée Kléber
+├── docs/                          # Documentation et ressources web
+│   ├── confidentialite.html       # Politique de confidentialité
+│   ├── installer.html             # Guide d'installation
+│   ├── doc_developpeur.md         # Notes de développement
+│   ├── doc_utilisateur.md         # Guide utilisateur
+│   ├── icon.svg                   # Icône source (SVG)
+│   └── icon.png                   # Icône exportée (PNG 1024×1024)
+├── outils/                        # Scripts de maintenance
+│   ├── check_catalogues.py        # Vérification des liens des catalogues
+│   ├── lancer_verification.py     # Lancement automatique + envoi mail
+│   └── rapports/                  # Rapports générés (ignorés par git)
 ├── sources/                       # Sources Flutter
 │   ├── lib/
 │   │   ├── main.dart              # Point d'entrée de l'application
@@ -66,19 +82,23 @@ Lanceur/
 │   │   │   ├── home_screen.dart   # Écran principal (grille / liste de raccourcis)
 │   │   │   └── webview_screen.dart# Navigateur intégré avec injection de credentials
 │   │   └── services/
-│   │       ├── storage_service.dart  # Persistance locale (shared_preferences + secure storage)
-│   │       └── export_service.dart   # Export / import chiffré (.lncr)
+│   │       ├── storage_service.dart   # Persistance locale (shared_preferences + secure storage)
+│   │       └── export_service.dart    # Export / import chiffré (.lncr)
 │   ├── android/                   # Configuration Android native
 │   ├── pubspec.yaml               # Dépendances Flutter
-│   ├── CHANGELOG.md               # Historique des versions
-│   └── doc/
-│       ├── doc_utilisateur.md     # Guide utilisateur
-│       ├── doc_developpeur.md     # Notes de développement
-│       ├── icon.svg               # Icône source (SVG)
-│       └── icon.png               # Icône exportée (PNG 1024×1024)
+│   └── CHANGELOG.md              # Historique des versions
 ├── LICENSE
 └── README.md
 ```
+
+---
+
+## Formats de fichiers
+
+| Extension | Usage |
+|-----------|-------|
+| `.lncr` | Sauvegarde chiffrée des raccourcis et identifiants utilisateur (AES-256, PBKDF2) |
+| `.catalogue` | Catalogue de raccourcis prêts à l'emploi (JSON, importable dans l'application) |
 
 ---
 
