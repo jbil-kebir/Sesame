@@ -14,13 +14,14 @@
 | Langage | Dart |
 | SDK Dart minimum | ^3.11.0 |
 | Cible principale | Android |
-| Version application | 1.5 |
+| Version application | 2.0 |
 
 ### Dépendances
 
 | Package | Version | Rôle |
 |---|---|---|
-| `webview_flutter` | ^4.10.0 | Affichage de pages web en WebView système |
+| `flutter_inappwebview` | ^6.0.0 | Affichage de pages web (WebView système Android), HTTP auth, download listener |
+| `open_filex` | ^4.7.0 | Ouverture des fichiers téléchargés dans l'application système appropriée |
 | `shared_preferences` | ^2.3.0 | Persistance locale des raccourcis (JSON) et préférences |
 | `flutter_secure_storage` | ^9.0.0 | Stockage chiffré des mots de passe et du hash PIN (AES / Keystore Android) |
 | `package_info_plus` | ^8.0.0 | Lecture de la version applicative depuis pubspec.yaml |
@@ -327,9 +328,42 @@ En mode `premierLancement`, valider navigue vers `/home` (→ `PinSetupScreen`).
 
 ### `lib/screens/webview_screen.dart`
 
-Écran de navigation web avec injection automatique des identifiants et capture des credentials.
+Écran de navigation web. Utilise `flutter_inappwebview` (`InAppWebView`).
 
-Voir la documentation v1.4 pour le détail des mécanismes JS (inchangés en v1.5).
+**Mécanismes JS (inchangés depuis v1.1)**
+
+Les canaux JS utilisent désormais `window.flutter_inappwebview.callHandler('NomCanal', payload)` (API `flutter_inappwebview`) au lieu de `NomCanal.postMessage(payload)` (ancienne API `webview_flutter`). Trois canaux :
+
+| Canal | Déclencheur | Action Flutter |
+|---|---|---|
+| `CredentialCapture` | Blur sur un champ password | Stocke les identifiants en attente |
+| `CredentialSaveNow` | Capture manuelle (bouton clé) | Propose immédiatement la sauvegarde |
+| `FormDetected` | MutationObserver détecte un champ password | Affiche le bouton clé dans l'AppBar |
+
+**Authentification HTTP Basic (`.htpasswd`)**
+
+`onReceivedHttpAuthRequest` affiche un `AlertDialog` avec les champs login/mot de passe, pré-remplis avec les identifiants du raccourci si disponibles. `permanentPersistence: true` — le WebView mémorise les credentials pour la durée de la session.
+
+**Téléchargement de fichiers**
+
+`onDownloadStartRequest` intercepte tout contenu que le WebView ne peut pas afficher nativement (PDF, Office…). Flux :
+1. Lecture des cookies de session via `CookieManager.instance().getCookies()`
+2. Téléchargement HTTP avec les cookies dans l'en-tête `Cookie`
+3. Écriture dans le dossier temporaire (`getTemporaryDirectory()`)
+4. Ouverture avec `OpenFilex.open()` (application système)
+
+Un overlay "Téléchargement en cours..." bloque l'UI pendant le téléchargement.
+
+**Gestion des drives cloud**
+
+`shouldOverrideUrlLoading` intercepte les URLs de drives via `_urlDrive()` :
+
+| Domaine | Traitement |
+|---|---|
+| `drive.google.com`, `docs.google.com` | Conversion en URL de téléchargement direct (`/uc?export=download&id=FILE_ID`) puis `_telechargerUrl()` |
+| `drive.proton.me`, `onedrive.live.com`, `1drv.ms`, `dropbox.com`, `box.com`, `*.sharepoint.com` | `launchUrl` → navigateur externe |
+
+`_urlDrive()` retourne `null` si l'URL n'est pas un drive connu, une URL non vide pour Google Drive (URL de téléchargement), ou une chaîne vide pour les autres drives (signal "ouvrir externalement").
 
 ---
 
@@ -457,7 +491,9 @@ AppRouter
 
 ## Comportement des cookies et sessions
 
-La `webview_flutter` utilise la **WebView système Android**. Les cookies sont persistés nativement par l'OS dans le répertoire de données de l'application. Un utilisateur connecté à un site reste connecté lors des prochaines ouvertures.
+`flutter_inappwebview` utilise la **WebView système Android**. Les cookies sont persistés nativement par l'OS dans le répertoire de données de l'application. Un utilisateur connecté à un site reste connecté lors des prochaines ouvertures.
+
+Les cookies sont également accessibles depuis Dart via `CookieManager.instance().getCookies(url: WebUri(url))`, ce qui permet de les transmettre lors des téléchargements HTTP authentifiés (PDFs ENT, intranet…).
 
 ---
 

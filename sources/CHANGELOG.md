@@ -1,3 +1,9 @@
+## 2.0
+- WebView : migration de `webview_flutter` vers `flutter_inappwebview` (moteur identique, API plus complète)
+- WebView : authentification HTTP Basic (sites protégés par `.htpasswd`) — dialog login/mot de passe, pré-remplie si des identifiants sont enregistrés pour ce raccourci
+- WebView : ouverture des fichiers téléchargeables (PDF, documents Office…) dans l'application système appropriée — cookies de session transmis automatiquement pour les fichiers derrière une authentification
+- WebView : gestion des liens vers les drives cloud — Google Drive converti en téléchargement direct, Proton Drive / OneDrive / Dropbox / Box / SharePoint ouverts dans le navigateur externe
+
 ## 1.4
 - WebView : les sites dont le certificat SSL n'est pas reconnu par Android s'affichent désormais correctement (résout la page blanche sur e-assr.education-securite-routiere.fr et sites similaires)
 - WebView : user-agent mis à jour (Android 14, Pixel 8, Chrome 131)

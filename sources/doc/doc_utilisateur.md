@@ -81,6 +81,26 @@ Lorsqu'un site est ouvert, une barre de navigation apparaît en haut :
 | **X** (croix) | Ferme le site et revient à l'accueil |
 | **Flèche gauche** | Revient à la page précédente (apparaît seulement si possible) |
 | **Icône refresh** | Recharge la page en cours |
+| **Icône navigateur** | Ouvre la page courante dans le navigateur Android |
+
+### Sites protégés par mot de passe (authentification HTTP)
+
+Certains sites ou pages sont protégés par un accès restreint au niveau du serveur (`.htpasswd`). Sésame affiche automatiquement une boîte de dialogue vous demandant un identifiant et un mot de passe, exactement comme le ferait un navigateur standard.
+
+Si des identifiants sont déjà enregistrés pour ce raccourci, les champs sont pré-remplis.
+
+### Ouverture des fichiers (PDF, documents…)
+
+Lorsqu'un lien pointe vers un fichier que le navigateur ne peut pas afficher directement (PDF, document Word, Excel…), Sésame le télécharge automatiquement et l'ouvre dans l'application appropriée installée sur votre appareil (visionneuse PDF, application Office…).
+
+Un indicateur "Téléchargement en cours…" s'affiche pendant le transfert. Si le fichier est sur un site sur lequel vous êtes connecté, les identifiants de session sont transmis automatiquement — le fichier est accessible sans nouvelle saisie de mot de passe.
+
+### Liens vers des services de stockage cloud (Google Drive, Proton Drive…)
+
+| Service | Comportement |
+|---|---|
+| **Google Drive** | Téléchargement direct et ouverture dans la visionneuse PDF |
+| **Proton Drive, OneDrive, Dropbox, Box, SharePoint** | Ouverture dans le navigateur Android |
 
 ---
 

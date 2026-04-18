@@ -1,7 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:http/http.dart' as http;
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+
 import '../services/storage_service.dart';
 
 class WebViewScreen extends StatefulWidget {
@@ -27,103 +33,48 @@ class WebViewScreen extends StatefulWidget {
 }
 
 class _WebViewScreenState extends State<WebViewScreen> {
-  late final WebViewController _controller;
+  InAppWebViewController? _controller;
   final StorageService _storage = StorageService();
   bool _chargement = true;
   bool _peutReculer = false;
   String? _erreur;
   bool _injectionEffectuee = false;
   bool _dialogueEnCours = false;
+  bool _telechargementEnCours = false;
 
-  // Identifiants capturés sur une page, proposés à la sauvegarde à la page suivante
   Map<String, String>? _identifiantsEnAttente;
-
-  // Vrai quand la page courante contient un champ password rempli
   bool _formulaireConnexionDetecte = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setUserAgent(
-        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36',
-      )
-      ..addJavaScriptChannel(
-        'CredentialCapture',
-        onMessageReceived: (msg) => _stockerIdentifiantsEnAttente(msg.message),
-      )
-      ..addJavaScriptChannel(
-        'CredentialSaveNow',
-        onMessageReceived: (msg) => _proposerSauvegardeDepuisMessage(msg.message),
-      )
-      ..addJavaScriptChannel(
-        'FormDetected',
-        onMessageReceived: (_) => setState(() => _formulaireConnexionDetecte = true),
-      )
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageStarted: (_) => setState(() {
-          _chargement = true;
-          _erreur = null;
-        }),
-        onPageFinished: (_) async {
-          final peutReculer = await _controller.canGoBack();
-          setState(() {
-            _chargement = false;
-            _peutReculer = peutReculer;
-            _formulaireConnexionDetecte = false;
-          });
-          _injecterWindowOpen();
-          // Tenter l'injection sur chaque page jusqu'au premier succès.
-          // Le JS n'agit que sur les champs visibles ; dès qu'il remplit un
-          // formulaire, _injectionEffectuee passe à true et on s'arrête.
-          await _injecterIdentifiants();
-          // Si des identifiants ont été capturés sur la page précédente,
-          // proposer la sauvegarde maintenant que la navigation a réussi.
-          final enAttente = _identifiantsEnAttente;
-          if (enAttente != null) {
-            _identifiantsEnAttente = null;
-            await _proposerSauvegarde(enAttente['login']!, enAttente['password']!);
-          }
-          _injecterCapture();
-        },
-        onNavigationRequest: (request) {
-          final url = request.url;
-          if (url.startsWith('intent://') ||
-              url.startsWith('market://') ||
-              url.startsWith('android-app://')) {
-            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)
-                .catchError((_) {});
-            return NavigationDecision.prevent;
-          }
-          return NavigationDecision.navigate;
-        },
-        onWebResourceError: (error) {
-          if (error.isForMainFrame ?? true) {
-            setState(() {
-              _chargement = false;
-              _erreur = error.description;
-            });
-          }
-        },
-        onSslAuthError: (error) => error.proceed(),
-      ))
-      ..loadRequest(Uri.parse(widget.url));
+  // ─── JS handlers ──────────────────────────────────────────────────────────
+
+  void _setupJsHandlers(InAppWebViewController controller) {
+    controller.addJavaScriptHandler(
+      handlerName: 'CredentialCapture',
+      callback: (args) {
+        if (args.isNotEmpty) _stockerIdentifiantsEnAttente(args[0].toString());
+      },
+    );
+    controller.addJavaScriptHandler(
+      handlerName: 'CredentialSaveNow',
+      callback: (args) {
+        if (args.isNotEmpty) _proposerSauvegardeDepuisMessage(args[0].toString());
+      },
+    );
+    controller.addJavaScriptHandler(
+      handlerName: 'FormDetected',
+      callback: (_) => setState(() => _formulaireConnexionDetecte = true),
+    );
   }
 
-  // Injecte les identifiants enregistrés (si présents) et soumet le formulaire.
-  // N'agit que sur les champs visibles (offsetParent != null) pour éviter de
-  // remplir des champs cachés (token CSRF…) sur les pages post-connexion.
-  // Dès qu'une injection réussit, _injectionEffectuee passe à true et les
-  // appels suivants (pages suivantes) deviennent des no-ops.
+  // ─── Injection des identifiants ───────────────────────────────────────────
+
   Future<void> _injecterIdentifiants() async {
     if (_injectionEffectuee || widget.login == null || widget.motDePasse == null) return;
 
     final loginJs = jsonEncode(widget.login);
     final mdpJs = jsonEncode(widget.motDePasse);
 
-    final result = await _controller.runJavaScriptReturningResult('''
+    final result = await _controller?.evaluateJavascript(source: '''
       (function() {
         var inputs = document.querySelectorAll('input');
         var passwordField = null;
@@ -131,7 +82,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
         for (var i = 0; i < inputs.length; i++) {
           var inp = inputs[i];
-          // Ignorer les champs masqués (hidden, display:none, visibility:hidden…)
           if (inp.type === 'password' && inp.offsetParent !== null) {
             passwordField = inp;
             for (var j = i - 1; j >= 0; j--) {
@@ -156,7 +106,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
         if (loginField) setVal(loginField, $loginJs);
         if (passwordField) {
           setVal(passwordField, $mdpJs);
-
           setTimeout(function() {
             var form = passwordField.closest('form');
             var submitBtn = null;
@@ -182,26 +131,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
       })();
     ''');
 
-    if (result.toString() == 'true') {
+    if (result == true) {
       setState(() => _injectionEffectuee = true);
     }
   }
 
-  // Redirige window.open() dans la même WebView (évite les pages blanches)
   void _injecterWindowOpen() {
-    _controller.runJavaScript('''
+    _controller?.evaluateJavascript(source: '''
       window.open = function(url) {
         if (url && url !== 'about:blank') window.location.href = url;
       };
     ''');
   }
 
-  // Injecte le script de capture des identifiants.
-  // - Blur sur le champ password → stocké côté Flutter, dialog à la page suivante
-  // - CredentialSaveNow → canal utilisé par le bouton manuel pour dialog immédiate
-  // - FormDetected → signale à Flutter qu'un formulaire de connexion est présent
   void _injecterCapture() {
-    _controller.runJavaScript(r'''
+    _controller?.evaluateJavascript(source: r'''
       (function() {
         function trouverLogin(passwordField) {
           var inputs = document.querySelectorAll('input');
@@ -223,11 +167,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
           var p = passwordField.value;
           if (!l || !p) return;
           try {
-            CredentialCapture.postMessage(JSON.stringify({ login: l, password: p }));
+            window.flutter_inappwebview.callHandler('CredentialCapture', JSON.stringify({ login: l, password: p }));
           } catch(e) {}
         }
 
-        // Expose une fonction globale pour la capture manuelle (bouton AppBar)
         window.__captureManuelle = function() {
           var pwds = document.querySelectorAll('input[type="password"]');
           for (var i = 0; i < pwds.length; i++) {
@@ -236,7 +179,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             var login = trouverLogin(pwd);
             if (login && login.value) {
               try {
-                CredentialSaveNow.postMessage(JSON.stringify({
+                window.flutter_inappwebview.callHandler('CredentialSaveNow', JSON.stringify({
                   login: login.value,
                   password: pwd.value
                 }));
@@ -282,7 +225,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         function scanner() {
           var pwds = document.querySelectorAll('input[type="password"]');
           if (pwds.length > 0) {
-            try { FormDetected.postMessage('1'); } catch(e) {}
+            try { window.flutter_inappwebview.callHandler('FormDetected', '1'); } catch(e) {}
             pwds.forEach(attacherBlur);
           }
           document.querySelectorAll('form').forEach(attacherSubmit);
@@ -298,20 +241,170 @@ class _WebViewScreenState extends State<WebViewScreen> {
     ''');
   }
 
-  // Bouton manuel : lit le formulaire visible et propose la sauvegarde immédiatement.
-  // Si les champs sont déjà soumis (vides), utilise les identifiants en attente.
+  // ─── Capture manuelle ─────────────────────────────────────────────────────
+
   Future<void> _captureManuelle() async {
-    // Cas 1 : formulaire encore visible (utilisateur clique avant de soumettre)
-    await _controller.runJavaScript(
-      'if(window.__captureManuelle) window.__captureManuelle();',
+    await _controller?.evaluateJavascript(
+      source: 'if(window.__captureManuelle) window.__captureManuelle();',
     );
-    // Cas 2 : formulaire déjà soumis → utiliser les identifiants capturés en attente
     final enAttente = _identifiantsEnAttente;
     if (enAttente != null) {
       _identifiantsEnAttente = null;
       await _proposerSauvegarde(enAttente['login']!, enAttente['password']!);
     }
   }
+
+  // ─── HTTP Auth (.htpasswd) ────────────────────────────────────────────────
+
+  Future<HttpAuthResponse?> _gererAuthHttp(URLAuthenticationChallenge challenge) async {
+    if (!mounted) return HttpAuthResponse(action: HttpAuthResponseAction.CANCEL);
+    final loginCtrl = TextEditingController(text: widget.login ?? '');
+    final mdpCtrl = TextEditingController(text: widget.motDePasse ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'Authentification requise\n${challenge.protectionSpace.host}',
+          style: const TextStyle(fontSize: 15),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: loginCtrl,
+              decoration: const InputDecoration(labelText: 'Identifiant'),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: mdpCtrl,
+              decoration: const InputDecoration(labelText: 'Mot de passe'),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Se connecter'),
+          ),
+        ],
+      ),
+    );
+    final loginText = loginCtrl.text;
+    final mdpText = mdpCtrl.text;
+    loginCtrl.dispose();
+    mdpCtrl.dispose();
+    if (ok == true) {
+      return HttpAuthResponse(
+        username: loginText,
+        password: mdpText,
+        action: HttpAuthResponseAction.PROCEED,
+        permanentPersistence: true,
+      );
+    }
+    return HttpAuthResponse(action: HttpAuthResponseAction.CANCEL);
+  }
+
+  // ─── Téléchargement (PDF, etc.) ───────────────────────────────────────────
+
+  Future<void> _telecharger(DownloadStartRequest request) =>
+      _telechargerUrl(request.url.toString());
+
+  Future<void> _telechargerUrl(String url) async {
+    setState(() => _telechargementEnCours = true);
+    try {
+      final cookies = await CookieManager.instance().getCookies(url: WebUri(url));
+      final cookieHeader = cookies.map((c) => '${c.name}=${c.value}').join('; ');
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          if (cookieHeader.isNotEmpty) 'Cookie': cookieHeader,
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 '
+              '(KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36',
+        },
+      );
+
+      if (response.statusCode != 200) throw Exception('HTTP ${response.statusCode}');
+
+      final filename = _extraireNomFichier(response.headers, url);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(response.bodyBytes);
+
+      if (!mounted) return;
+      setState(() => _telechargementEnCours = false);
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _telechargementEnCours = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible d\'ouvrir le fichier : $e')),
+      );
+    }
+  }
+
+  // ─── Drives cloud ─────────────────────────────────────────────────────────
+
+  // Retourne null si l'URL n'est pas un drive connu.
+  // Retourne une URL de téléchargement direct si c'est Google Drive.
+  // Retourne '' pour les autres drives (ouvrir dans le navigateur externe).
+  String? _urlDrive(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    final host = uri.host.toLowerCase();
+
+    // Google Drive → conversion en lien de téléchargement direct
+    if (host == 'drive.google.com' || host == 'docs.google.com') {
+      // Format /file/d/FILE_ID/...
+      final match = RegExp(r'/(?:file|document|spreadsheets|presentation)/d/([^/?#]+)')
+          .firstMatch(uri.path);
+      if (match != null) {
+        return 'https://drive.google.com/uc?export=download&id=${match.group(1)}';
+      }
+      // Format ?id=FILE_ID ou open?id=FILE_ID
+      final id = uri.queryParameters['id'];
+      if (id != null) {
+        return 'https://drive.google.com/uc?export=download&id=$id';
+      }
+      return ''; // lien Google Drive non reconnu → ouvrir externalement
+    }
+
+    // Autres drives → ouvrir dans le navigateur externe
+    const drivesExternes = [
+      'drive.proton.me',
+      'onedrive.live.com',
+      '1drv.ms',
+      'dropbox.com',
+      'www.dropbox.com',
+      'box.com',
+      'app.box.com',
+    ];
+    if (drivesExternes.any((d) => host == d || host.endsWith('.$d')) ||
+        host.contains('sharepoint.com') ||
+        host.contains('sharepoint-df.com')) {
+      return '';
+    }
+
+    return null;
+  }
+
+  String _extraireNomFichier(Map<String, String> headers, String url) {
+    final cd = headers['content-disposition'] ?? '';
+    final match = RegExp(r'filename\s*=\s*"?([^";\n]+)"?').firstMatch(cd);
+    if (match != null) return match.group(1)!.trim();
+    final path = Uri.parse(url).path;
+    final name = path.split('/').last;
+    return name.isNotEmpty ? name : 'fichier_${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  // ─── Gestion des credentials ──────────────────────────────────────────────
 
   void _proposerSauvegardeDepuisMessage(String message) {
     if (!mounted) return;
@@ -325,8 +418,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
     } catch (_) {}
   }
 
-  // Stocke les identifiants sans afficher la dialog : elle sera montrée
-  // à la prochaine page chargée (connexion réussie confirmée).
   void _stockerIdentifiantsEnAttente(String message) {
     if (!mounted) return;
     try {
@@ -339,11 +430,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
     } catch (_) {}
   }
 
-  // Affiche la dialog de sauvegarde après navigation réussie
   Future<void> _proposerSauvegarde(String login, String password) async {
     if (_dialogueEnCours || !mounted) return;
 
-    // Ne pas proposer si ce sont déjà les identifiants enregistrés
     if (login == widget.login) {
       final mdpExistant = await _storage.chargerMotDePasse(widget.raccourciId);
       if (mdpExistant == password) return;
@@ -380,6 +469,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
+  // ─── UI ───────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -395,7 +486,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
           if (_peutReculer)
             IconButton(
               icon: const Icon(Icons.arrow_back_ios),
-              onPressed: () => _controller.goBack(),
+              onPressed: () => _controller?.goBack(),
             ),
           if (_formulaireConnexionDetecte || _identifiantsEnAttente != null)
             IconButton(
@@ -405,24 +496,117 @@ class _WebViewScreenState extends State<WebViewScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _controller.reload(),
+            onPressed: () => _controller?.reload(),
           ),
           IconButton(
             icon: const Icon(Icons.open_in_browser),
             tooltip: 'Ouvrir dans le navigateur',
             onPressed: () async {
-              final url = await _controller.currentUrl() ?? widget.url;
-              await launchUrl(Uri.parse(url),
-                  mode: LaunchMode.externalApplication);
+              final uri = await _controller?.getUrl();
+              final url = uri?.toString() ?? widget.url;
+              await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
             },
           ),
         ],
       ),
       body: Stack(
         children: [
-          WebViewWidget(controller: _controller),
+          InAppWebView(
+            initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+            initialSettings: InAppWebViewSettings(
+              javaScriptEnabled: true,
+              userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 '
+                  '(KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36',
+              useShouldOverrideUrlLoading: true,
+              useOnDownloadStart: true,
+            ),
+            onWebViewCreated: (controller) {
+              _controller = controller;
+              _setupJsHandlers(controller);
+            },
+            onLoadStart: (controller, url) {
+              setState(() {
+                _chargement = true;
+                _erreur = null;
+              });
+            },
+            onLoadStop: (controller, url) async {
+              final peutReculer = await controller.canGoBack();
+              setState(() {
+                _chargement = false;
+                _peutReculer = peutReculer;
+                _formulaireConnexionDetecte = false;
+              });
+              _injecterWindowOpen();
+              await _injecterIdentifiants();
+              final enAttente = _identifiantsEnAttente;
+              if (enAttente != null) {
+                _identifiantsEnAttente = null;
+                await _proposerSauvegarde(enAttente['login']!, enAttente['password']!);
+              }
+              _injecterCapture();
+            },
+            shouldOverrideUrlLoading: (controller, navigationAction) async {
+              final url = navigationAction.request.url?.toString() ?? '';
+              if (url.startsWith('intent://') ||
+                  url.startsWith('market://') ||
+                  url.startsWith('android-app://')) {
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)
+                    .catchError((_) {});
+                return NavigationActionPolicy.CANCEL;
+              }
+              final driveUrl = _urlDrive(url);
+              if (driveUrl != null) {
+                if (driveUrl.isNotEmpty) {
+                  // Google Drive → téléchargement direct
+                  _telechargerUrl(driveUrl);
+                } else {
+                  // Autre drive → navigateur externe
+                  launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)
+                      .catchError((_) {});
+                }
+                return NavigationActionPolicy.CANCEL;
+              }
+              return NavigationActionPolicy.ALLOW;
+            },
+            onReceivedError: (controller, request, error) {
+              if (request.isForMainFrame == true) {
+                setState(() {
+                  _chargement = false;
+                  _erreur = error.description;
+                });
+              }
+            },
+            onReceivedServerTrustAuthRequest: (controller, challenge) async {
+              return ServerTrustAuthResponse(
+                  action: ServerTrustAuthResponseAction.PROCEED);
+            },
+            onReceivedHttpAuthRequest: (controller, challenge) async {
+              return _gererAuthHttp(challenge);
+            },
+            onDownloadStartRequest: (controller, downloadStartRequest) async {
+              await _telecharger(downloadStartRequest);
+            },
+          ),
           if (_chargement)
             const Center(child: CircularProgressIndicator()),
+          if (_telechargementEnCours)
+            Container(
+              color: Colors.black45,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Téléchargement en cours...',
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (_erreur != null)
             Container(
               color: Theme.of(context).colorScheme.surface,
@@ -436,18 +620,20 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       const SizedBox(height: 16),
                       const Text(
                         'La page n\'a pas pu être chargée.',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        style:
+                            TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _erreur!,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        onPressed: () => _controller.reload(),
+                        onPressed: () => _controller?.reload(),
                         icon: const Icon(Icons.refresh),
                         label: const Text('Réessayer'),
                       ),
