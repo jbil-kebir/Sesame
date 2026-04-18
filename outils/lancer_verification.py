@@ -32,7 +32,7 @@ def assurer_thunderbird_ouvert():
         capture_output=True, text=True
     )
     if "thunderbird.exe" not in result.stdout.lower():
-        print("Thunderbird fermé, démarrage en cours...")
+        print("Thunderbird ferme, demarrage en cours...")
         subprocess.Popen([THUNDERBIRD])
         time.sleep(8)  # attendre que l'extension MCP soit prête
 
