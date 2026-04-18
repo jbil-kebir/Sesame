@@ -6,7 +6,7 @@
       "shortcuts": [
         { "id": "mbn_clg",     "label": "MBN (collège)",       "url": "https://clg-kleber-strasbourg.monbureaunumerique.fr/sg.do?PROC=PAGE_ACCUEIL&ACTION=VALIDER" },
         { "id": "pronote_clg", "label": "Pronote (collège)",   "url": "https://0670133f.index-education.net/pronote/" },
-        { "id": "moodle_clg",  "label": "Moodle (collège)",    "url": "https://clg-kleber-strasbourg.monburreaunumerique.fr/sg.do?PROC=MOODLE" },
+        { "id": "moodle_clg",  "label": "Moodle (collège)",    "url": "https://clg-kleber-strasbourg.monbureaunumerique.fr/sg.do?PROC=MOODLE" },
         { "id": "depot_eleve", "label": "Dépôt d'élève",       "url": "https://nuage04.apps.education.fr/index.php/s/Kqz5TQmJoWAcpnz" },
         { "id": "cantine",     "label": "Cantine Kléber",      "url": "https://lycee-kleber.com.fr/restauration/" }
       ]
@@ -15,7 +15,7 @@
       "id": "securite_routiere",
       "label": "Sécurité routière",
       "shortcuts": [
-        { "id": "assr1", "label": "ASSR 1", "url": "https://e-assr.education-securite-routiere.fr/preparrer/assr/1/ASSR1" },
+        { "id": "assr1", "label": "ASSR 1", "url": "https://e-assr.education-securite-routiere.fr/preparer/assr/1/ASSR1" },
         { "id": "assr2", "label": "ASSR 2", "url": "https://e-assr.education-securite-routiere.fr/preparer/assr/2/ASSR2" }
       ]
     },
