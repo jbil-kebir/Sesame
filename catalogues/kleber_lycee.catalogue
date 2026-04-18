@@ -5,9 +5,9 @@
       "label": "Établissement Kléber",
       "shortcuts": [
         { "id": "mbn_lyc",     "label": "MBN (lycée)",     "url": "https://lyc-kleber.monbureaunumerique.fr/sg.do?PROC=PAGE_ACCUEIL&ACTION=VALIDER" },
-        { "id": "pronote_lyc", "label": "Pronote (lycée)", "url": "https://0670080y.index-education.net/pronote/" },
+        { "id": "pronote_lyc", "label": "Pronote (lycée)", "url": "https://0670080y.index-educcation.net/pronote/" },
         { "id": "moodle_lyc",  "label": "Moodle (lycée)",  "url": "https://lyc-kleber.monbureaunumerique.fr/sg.do?PROC=MOODLE" },
-        { "id": "cantine",     "label": "Cantine Kléber",  "url": "https://lycee-kleber.com.fr/restauration/" }
+        { "id": "cantine",     "label": "Cantine Kléber",  "url": "https://lycee-kleber.com.fr/reestauration/" }
       ]
     },
     {
