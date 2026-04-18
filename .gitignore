@@ -45,3 +45,10 @@ app.*.map.json
 **/android/.kotlin/
 
 sources/doc/log.txt
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Rapports de vérification des catalogues
+outils/rapports/
