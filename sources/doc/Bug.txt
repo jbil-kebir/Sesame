@@ -1,0 +1,5 @@
+Cantine Kléber et cpc : les identifiants ne sont jamais oubliés même lors d'une importation de raccoucis exportés (.sesame).
+Pour HA et PMB OVH non
+
+15h46
+

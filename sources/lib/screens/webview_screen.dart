@@ -171,13 +171,35 @@ class _WebViewScreenState extends State<WebViewScreen> {
           } catch(e) {}
         }
 
+        function getAllInputsDeep(root) {
+          var results = [];
+          var inputs = root.querySelectorAll('input');
+          for (var i = 0; i < inputs.length; i++) results.push(inputs[i]);
+          var all = root.querySelectorAll('*');
+          for (var i = 0; i < all.length; i++) {
+            if (all[i].shadowRoot) {
+              var nested = getAllInputsDeep(all[i].shadowRoot);
+              for (var j = 0; j < nested.length; j++) results.push(nested[j]);
+            }
+          }
+          return results;
+        }
+
         window.__captureManuelle = function() {
-          var pwds = document.querySelectorAll('input[type="password"]');
-          for (var i = 0; i < pwds.length; i++) {
-            var pwd = pwds[i];
-            if (!pwd.value) continue;
-            var login = trouverLogin(pwd);
-            if (login && login.value) {
+          var inputs = getAllInputsDeep(document);
+          for (var i = 0; i < inputs.length; i++) {
+            var pwd = inputs[i];
+            if (pwd.type !== 'password' || !pwd.value) continue;
+            // Chercher le champ login parmi tous les inputs
+            var login = null;
+            for (var j = i - 1; j >= 0; j--) {
+              var t = inputs[j].type;
+              if ((t === 'text' || t === 'email' || t === '') && inputs[j].value) {
+                login = inputs[j];
+                break;
+              }
+            }
+            if (login) {
               try {
                 window.flutter_inappwebview.callHandler('CredentialSaveNow', JSON.stringify({
                   login: login.value,
@@ -258,8 +280,20 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   Future<HttpAuthResponse?> _gererAuthHttp(URLAuthenticationChallenge challenge) async {
     if (!mounted) return HttpAuthResponse(action: HttpAuthResponseAction.CANCEL);
-    final loginCtrl = TextEditingController(text: widget.login ?? '');
-    final mdpCtrl = TextEditingController(text: widget.motDePasse ?? '');
+
+    // Identifiants déjà stockés → réponse automatique, pas de dialog
+    if (widget.login != null && widget.motDePasse != null) {
+      return HttpAuthResponse(
+        username: widget.login!,
+        password: widget.motDePasse!,
+        action: HttpAuthResponseAction.PROCEED,
+        permanentPersistence: true,
+      );
+    }
+
+    // Premier accès → dialog de saisie
+    final loginCtrl = TextEditingController();
+    final mdpCtrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -301,6 +335,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
     loginCtrl.dispose();
     mdpCtrl.dispose();
     if (ok == true) {
+      // Proposer la sauvegarde après le chargement de la page
+      _identifiantsEnAttente = {'login': loginText, 'password': mdpText};
       return HttpAuthResponse(
         username: loginText,
         password: mdpText,
