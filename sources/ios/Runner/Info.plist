@@ -47,6 +47,14 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Cette application utilise Face ID pour vous authentifier.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application peut accéder à la caméra via le navigateur web intégré.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cette application peut accéder au microphone via le navigateur web intégré.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application peut accéder à vos photos pour partager des fichiers.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
