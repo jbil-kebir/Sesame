@@ -144,4 +144,36 @@ class ExportService {
       List.generate(length, (_) => rng.nextInt(256)),
     );
   }
+
+  /// Convertit une liste de raccourcis en JSON .catalogue (sans mots de passe).
+  /// Les séparateurs délimitent les catégories, nommées "Catégorie 1", "Catégorie 2"…
+  static String exporterEnCatalogue(List<Raccourci> raccourcis) {
+    final categories = <Map<String, dynamic>>[];
+    var groupe = <Raccourci>[];
+    var numCategorie = 1;
+
+    void ajouterCategorie() {
+      if (groupe.isEmpty) return;
+      categories.add({
+        'id': 'categorie_$numCategorie',
+        'label': 'Catégorie $numCategorie',
+        'shortcuts': groupe
+            .map((r) => {'id': r.id, 'label': r.nom, 'url': r.url})
+            .toList(),
+      });
+      numCategorie++;
+      groupe = [];
+    }
+
+    for (final r in raccourcis) {
+      if (r.estSeparateur) {
+        ajouterCategorie();
+      } else {
+        groupe.add(r);
+      }
+    }
+    ajouterCategorie();
+
+    return const JsonEncoder.withIndent('  ').convert({'categories': categories});
+  }
 }

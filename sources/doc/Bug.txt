@@ -1,5 +1,13 @@
 Cantine Kléber et cpc : les identifiants ne sont jamais oubliés même lors d'une importation de raccoucis exportés (.sesame).
 Pour HA et PMB OVH non
 
-15h46
+15h46 : installation et paramétrage
+18h10 : connexion
+Seul PMB OVH redemande les id
+-> je les saisie
+-> ne demande pas de sauvegarder
+Pas de cadenas
+
+HA : pas de cadenas non plus
+
 

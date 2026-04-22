@@ -474,6 +474,57 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _exporterCatalogue() async {
+    final now = DateTime.now();
+    final nomDefaut =
+        'catalogue_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}'
+        '_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+    final nomController = TextEditingController(text: nomDefaut);
+
+    final nomFichier = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nom du fichier'),
+        content: TextField(
+          controller: nomController,
+          autofocus: true,
+          decoration: const InputDecoration(suffixText: '.catalogue'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final n = nomController.text.trim();
+              if (n.isEmpty) return;
+              Navigator.pop(ctx, n);
+            },
+            child: const Text('Exporter'),
+          ),
+        ],
+      ),
+    );
+    if (nomFichier == null || !mounted) return;
+
+    try {
+      final contenu = ExportService.exporterEnCatalogue(_raccourcis);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$nomFichier.catalogue');
+      await file.writeAsString(contenu);
+
+      if (!mounted) return;
+      await Share.shareXFiles([XFile(file.path)], text: 'Catalogue Sésame');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur lors de l'export catalogue : $e")),
+        );
+      }
+    }
+  }
+
   Future<void> _importer() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.any);
     if (result == null || !mounted) return;
@@ -880,6 +931,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (value == 'catalogue_sesame') _importerCatalogue();
                     if (value == 'catalogue_en_ligne') _ouvrirCataloguesEnLigne();
                     if (value == 'export') _exporter();
+                    if (value == 'export_catalogue') _exporterCatalogue();
                     if (value == 'import') _importer();
                     if (value == 'effacer') _effacerTousLesRaccourcis();
                     if (value == 'restaurer') _restaurerBackupAuto();
@@ -898,7 +950,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         value: 'catalogue_en_ligne',
                         child: Text('Catalogues en ligne')),
                     const PopupMenuDivider(),
-                    const PopupMenuItem(value: 'export', child: Text('Exporter')),
+                    const PopupMenuItem(value: 'export', child: Text('Exporter (.sesame)')),
+                    const PopupMenuItem(value: 'export_catalogue', child: Text('Exporter comme catalogue')),
                     const PopupMenuItem(value: 'import', child: Text('Importer')),
                     const PopupMenuDivider(),
                     const PopupMenuItem(

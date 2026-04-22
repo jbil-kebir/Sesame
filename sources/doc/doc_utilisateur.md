@@ -172,15 +172,25 @@ Vous pouvez aussi importer un fichier catalogue (`.catalogue`) reçu directement
 
 ## Exporter et importer ses raccourcis
 
-### Exporter
+### Exporter (.sesame)
 
-1. Appuyez sur le menu **⋮** en haut à droite, puis **Exporter**.
+1. Appuyez sur le menu **⋮** en haut à droite, puis **Exporter (.sesame)**.
 2. Saisissez une **passphrase** (mot de passe de chiffrement) et confirmez.
 3. Partagez le fichier `.sesame` généré via l'application de votre choix (Drive, mail, WhatsApp…).
 
 > Le fichier est chiffré : sans la passphrase, son contenu est illisible.
 
 > **Conseil** : conservez un fichier `.sesame` à jour comme sauvegarde de secours. C'est le seul moyen de restaurer vos données en cas de réinitialisation de l'application.
+
+### Exporter comme catalogue (.catalogue)
+
+Cette option exporte vos raccourcis au format catalogue — **sans les identifiants ni les mots de passe**. Le fichier peut ensuite être importé comme catalogue local sur un autre appareil ou partagé avec d'autres utilisateurs.
+
+1. Appuyez sur le menu **⋮**, puis **Exporter comme catalogue**.
+2. Modifiez si besoin le nom du fichier proposé.
+3. Partagez le fichier `.catalogue` généré.
+
+Si vos raccourcis sont divisés en groupes par des **séparateurs**, chaque groupe devient une catégorie dans le catalogue (« Catégorie 1 », « Catégorie 2 »…).
 
 ### Importer
 

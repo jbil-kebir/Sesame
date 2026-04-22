@@ -1,3 +1,6 @@
+## 2.2
+- Export des raccourcis comme catalogue (`.catalogue`) — nom et URL uniquement, sans identifiants ; les séparateurs délimitent les catégories
+
 ## 2.1
 - WebView : authentification HTTP Basic (`.htpasswd`) — réponse automatique si les identifiants sont enregistrés, proposition de sauvegarde au premier accès
 - WebView : capture des identifiants étendue aux formulaires utilisant le shadow DOM
