@@ -1,6 +1,6 @@
 # Sésame
 
-Application Android Flutter permettant d'enregistrer des raccourcis vers vos sites web favoris et de les ouvrir en un seul appui, avec connexion automatique optionnelle.
+Application Flutter permettant d'enregistrer des raccourcis vers vos sites web favoris et de les ouvrir en un seul appui, avec connexion automatique optionnelle. Disponible sur **Android** et **iOS**.
 
 ---
 
@@ -18,6 +18,19 @@ Application Android Flutter permettant d'enregistrer des raccourcis vers vos sit
 
 ---
 
+## Téléchargement
+
+| Android | iOS |
+|:-------:|:---:|
+| [![QR Android](https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://github.com/jbil-kebir/Sesame/raw/main/apk/sesame.apk)](https://github.com/jbil-kebir/Sesame/raw/main/apk/sesame.apk) | [![QR iOS](https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://github.com/jbil-kebir/Sesame/raw/main/ipa/sesame.ipa)](https://github.com/jbil-kebir/Sesame/raw/main/ipa/sesame.ipa) |
+| [⬇ sesame.apk](https://github.com/jbil-kebir/Sesame/raw/main/apk/sesame.apk) | [⬇ sesame.ipa](https://github.com/jbil-kebir/Sesame/raw/main/ipa/sesame.ipa) |
+| Android 5.0+ | iOS — via AltStore ou Xcode |
+
+> **Android :** voir le [guide d'installation](docs/installer.html) pour autoriser les sources inconnues.  
+> **iOS :** l'IPA s'installe via [AltStore](https://altstore.io) ou en déployant avec Xcode sur un appareil enregistré.
+
+---
+
 ## Captures d'écran
 
 *(à venir)*
@@ -29,8 +42,8 @@ Application Android Flutter permettant d'enregistrer des raccourcis vers vos sit
 ### Prérequis
 
 - [Flutter SDK](https://flutter.dev/docs/get-started/install) ≥ 3.11
-- Android SDK / Android Studio
-- Un appareil Android ou émulateur
+- Android SDK / Android Studio (pour Android)
+- Xcode ≥ 15 + macOS (pour iOS)
 
 ### Lancer en développement
 
@@ -40,15 +53,22 @@ flutter pub get
 flutter run
 ```
 
-### Compiler l'APK
+### Compiler
 
 ```bash
+# Android
 flutter build apk --release
+
+# iOS (sur macOS)
+flutter build ipa --release
 ```
 
-### APK prête à l'emploi
+### Fichiers prêts à l'emploi
 
-Un fichier `apk/sesame.apk` est disponible à la racine du dépôt pour une installation directe sur Android.
+| Fichier | Plateforme |
+|---------|-----------|
+| `apk/sesame.apk` | Android (installation directe) |
+| `ipa/sesame.ipa` | iOS (via AltStore ou Xcode) |
 
 ---
 
@@ -57,7 +77,9 @@ Un fichier `apk/sesame.apk` est disponible à la racine du dépôt pour une inst
 ```
 Sesame/
 ├── apk/
-│   └── sesame.apk                 # APK release prête à l'emploi
+│   └── sesame.apk                 # APK release prête à l'emploi (Android)
+├── ipa/
+│   └── sesame.ipa                 # IPA release prête à l'emploi (iOS)
 ├── catalogues/                    # Catalogues de raccourcis hébergés
 │   ├── index.json                 # Index des catalogues disponibles
 │   ├── kleber_college.catalogue   # Catalogue Collège Kléber
@@ -94,6 +116,7 @@ Sesame/
 │   │       ├── storage_service.dart   # Persistance locale (shared_preferences + secure storage)
 │   │       └── export_service.dart    # Export / import chiffré (.sesame)
 │   ├── android/                   # Configuration Android native
+│   ├── ios/                       # Configuration iOS native
 │   ├── pubspec.yaml               # Dépendances Flutter
 │   └── CHANGELOG.md              # Historique des versions
 ├── LICENSE
