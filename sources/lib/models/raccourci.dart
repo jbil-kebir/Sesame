@@ -4,6 +4,7 @@ class Raccourci {
   String url;
   String? login;
   bool estSeparateur;
+  bool estRadio;
 
   Raccourci({
     required this.id,
@@ -11,6 +12,7 @@ class Raccourci {
     required this.url,
     this.login,
     this.estSeparateur = false,
+    this.estRadio = false,
   });
 
   factory Raccourci.separateur(String id) =>
@@ -23,6 +25,7 @@ class Raccourci {
       url: json['url'],
       login: json['login'],
       estSeparateur: json['separateur'] == true,
+      estRadio: json['radio'] == true,
     );
   }
 
@@ -33,6 +36,7 @@ class Raccourci {
       'url': url,
       if (login != null) 'login': login,
       if (estSeparateur) 'separateur': true,
+      if (estRadio) 'radio': true,
     };
   }
 }

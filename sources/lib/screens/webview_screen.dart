@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
@@ -16,6 +17,7 @@ class WebViewScreen extends StatefulWidget {
   final String url;
   final String? login;
   final String? motDePasse;
+  final bool estRadio;
   final void Function(String login, String password)? onCredentialsSaved;
 
   const WebViewScreen({
@@ -25,6 +27,7 @@ class WebViewScreen extends StatefulWidget {
     required this.url,
     this.login,
     this.motDePasse,
+    this.estRadio = false,
     this.onCredentialsSaved,
   });
 
@@ -32,7 +35,7 @@ class WebViewScreen extends StatefulWidget {
   State<WebViewScreen> createState() => _WebViewScreenState();
 }
 
-class _WebViewScreenState extends State<WebViewScreen> {
+class _WebViewScreenState extends State<WebViewScreen> with WidgetsBindingObserver {
   InAppWebViewController? _controller;
   final StorageService _storage = StorageService();
   bool _chargement = true;
@@ -44,6 +47,58 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   Map<String, String>? _identifiantsEnAttente;
   bool _formulaireConnexionDetecte = false;
+
+  // ─── Lifecycle ────────────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.estRadio) WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    if (widget.estRadio) WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _controller?.resumeTimers();
+      _relancerAudio();
+    }
+  }
+
+  void _injecterVisibiliteRadio() {
+    _controller?.evaluateJavascript(source: '''
+      (function() {
+        if (window.__radioVisibiliteInjectee) return;
+        window.__radioVisibiliteInjectee = true;
+        Object.defineProperty(document, 'hidden', {
+          configurable: true, get: function() { return false; }
+        });
+        Object.defineProperty(document, 'visibilityState', {
+          configurable: true, get: function() { return 'visible'; }
+        });
+        document.addEventListener('visibilitychange', function(e) {
+          e.stopImmediatePropagation();
+        }, true);
+      })();
+    ''');
+  }
+
+  Future<void> _relancerAudio() async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    _injecterVisibiliteRadio();
+    await _controller?.evaluateJavascript(source: '''
+      (function() {
+        document.querySelectorAll('audio, video').forEach(function(el) {
+          if (el.paused && !el.ended) el.play().catch(function(){});
+        });
+      })();
+    ''');
+  }
 
   // ─── JS handlers ──────────────────────────────────────────────────────────
 
@@ -549,12 +604,31 @@ class _WebViewScreenState extends State<WebViewScreen> {
         children: [
           InAppWebView(
             initialUrlRequest: URLRequest(url: WebUri(widget.url)),
+            initialUserScripts: widget.estRadio
+                ? UnmodifiableListView([
+                    UserScript(
+                      source: '''
+                        Object.defineProperty(document, 'hidden', {
+                          configurable: true, get: function() { return false; }
+                        });
+                        Object.defineProperty(document, 'visibilityState', {
+                          configurable: true, get: function() { return 'visible'; }
+                        });
+                        document.addEventListener('visibilitychange', function(e) {
+                          e.stopImmediatePropagation();
+                        }, true);
+                      ''',
+                      injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
+                    ),
+                  ])
+                : null,
             initialSettings: InAppWebViewSettings(
               javaScriptEnabled: true,
               userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 '
                   '(KHTML, like Gecko) Chrome/131.0.6778.135 Mobile Safari/537.36',
               useShouldOverrideUrlLoading: true,
               useOnDownloadStart: true,
+              mediaPlaybackRequiresUserGesture: !widget.estRadio,
             ),
             onWebViewCreated: (controller) {
               _controller = controller;
@@ -574,6 +648,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                 _formulaireConnexionDetecte = false;
               });
               _injecterWindowOpen();
+              if (widget.estRadio) _injecterVisibiliteRadio();
               await _injecterIdentifiants();
               final enAttente = _identifiantsEnAttente;
               if (enAttente != null) {

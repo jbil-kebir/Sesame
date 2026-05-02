@@ -123,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
           url: raccourci.url,
           login: raccourci.login,
           motDePasse: motDePasse,
+          estRadio: raccourci.estRadio,
           onCredentialsSaved: (login, _) {
             setState(() => raccourci.login = login);
             _sauvegarder();
@@ -144,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final loginController = TextEditingController(text: raccourci?.login ?? '');
     final mdpController = TextEditingController(text: mdpExistant ?? '');
     bool mdpVisible = false;
+    bool estRadio = raccourci?.estRadio ?? false;
 
     showDialog(
       context: context,
@@ -165,6 +167,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   keyboardType: TextInputType.url,
                 ),
                 const Divider(height: 28),
+                SwitchListTile(
+                  value: estRadio,
+                  onChanged: (v) => setDialogState(() => estRadio = v),
+                  title: const Text('Radio (lecture en veille)'),
+                  secondary: const Icon(Icons.radio),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const Divider(height: 16),
                 TextField(
                   controller: loginController,
                   decoration: const InputDecoration(
@@ -214,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       nom: nom,
                       url: url,
                       login: login.isEmpty ? null : login,
+                      estRadio: estRadio,
                     ));
                   });
                 } else {
@@ -222,6 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     raccourci.nom = nom;
                     raccourci.url = url;
                     raccourci.login = login.isEmpty ? null : login;
+                    raccourci.estRadio = estRadio;
                   });
                 }
 
@@ -308,6 +320,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+            if (raccourci.estRadio)
+              const Positioned(
+                top: 6,
+                left: 6,
+                child: Icon(Icons.radio, size: 12, color: Colors.grey),
+              ),
             if (raccourci.login != null)
               const Positioned(
                 top: 6,
@@ -334,8 +352,18 @@ class _HomeScreenState extends State<HomeScreen> {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 12),
       ),
-      trailing: raccourci.login != null
-          ? const Icon(Icons.lock, size: 16, color: Colors.grey)
+      trailing: (raccourci.estRadio || raccourci.login != null)
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (raccourci.estRadio)
+                  const Icon(Icons.radio, size: 16, color: Colors.grey),
+                if (raccourci.estRadio && raccourci.login != null)
+                  const SizedBox(width: 4),
+                if (raccourci.login != null)
+                  const Icon(Icons.lock, size: 16, color: Colors.grey),
+              ],
+            )
           : null,
       onTap: () => _ouvrirRaccourci(raccourci),
       onLongPress: () => _afficherOptions(raccourci),
